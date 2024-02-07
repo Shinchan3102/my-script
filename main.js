@@ -10,55 +10,23 @@ window.onload = function () {
             document.cookie = `${name}=${value}; ${expires}; path=/`;
         }
 
-        // Function to get the value of a cookie
         function getCookie(name) {
             const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
             return match ? match[2] : null;
         }
 
-        // Check if the session ID cookie is present
         const nosupport = JSON.parse(getCookie('nosupport'));
 
         let tenant = '', session = '';
 
-
-        const handleClick = () => {
-            sendMessageToIframe('ButtonClicked')
-        }
-
-        const createSession = (tenantId) => {
-            fetch('https://api.nosupport.in/api/session' + `?tenantId=${tenantId}`)
-                .then(response => response.json())
-                .then(data => {
-                    const sessionId = data?.id;
-                    session = sessionId;
-                    setCookie('nosupport', JSON.stringify({ tenantId, sessionId }), 5);
-                    createIframe(tenantId, session);
-                })
-                .catch(error => console.error('Error fetching session ID:', error));
-        }
-
-        // If the session ID cookie is not present, set the default value
         if (!nosupport || nosupport.tenantId !== window?.chatConfig?.tenantId) {
-
             const { tenantId } = window?.chatConfig;
-
-            createSession(tenantId);
+            createIframe(tenantId, '');
         }
         else {
             tenant = nosupport?.tenantId;
             session = nosupport?.sessionId;
-            fetch('https://api.nosupport.in/api/session' + `/${session}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data?.sessionHelpNeed === 'RESOLVED') {
-                        createSession(tenant);
-                    }
-                    else {
-                        createIframe(tenant, session);
-                    }
-                })
-                .catch(error => console.error('Error fetching session ID:', error));
+            createIframe(tenant, session);
         }
 
 
@@ -66,7 +34,6 @@ window.onload = function () {
             console.log('ifram message sent')
             const iframe = document.getElementById('iframeButton');
             const overlayDiv = document.getElementById('overlayDiv')
-            // const btn = document.getElementById('nosupport-chatbot-button');
             if (iframe && overlayDiv) {
                 console.log('ifram message true')
                 iframe.contentWindow.postMessage('ButtonClicked', '*');
@@ -146,6 +113,11 @@ window.onload = function () {
                     overlayDiv.style.zIndex = '-10';
                     overlayDiv.style.transitionDuration = '100ms';
                 }
+            }
+            else if (message?.tenantId && message?.sessionId) {
+                console.log('message from chatbot to set cookie', message);
+                const { tenantId, sessionId } = message;
+                setCookie('nosupport', JSON.stringify({ tenantId, sessionId }), 5);
             }
         });
 
